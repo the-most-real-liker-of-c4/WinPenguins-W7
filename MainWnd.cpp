@@ -282,7 +282,7 @@ CMainWnd::CMainWnd()
 	if (!m_hInstanceMutex) {
 		// Again, use swprintf instead
 		wchar_t* mutexStr = (wchar_t*)malloc(80*sizeof(wchar_t));
-		swprintf(mutexStr, L"Unable to create WinPenguins Instance Mutex. CreateMutex error: %X", GetLastError());
+		swprintf(mutexStr,80, L"Unable to create WinPenguins Instance Mutex. CreateMutex error: %X", GetLastError());
 
 
 		MessageBox(mutexStr, L"Internal Error", MB_ICONERROR);
