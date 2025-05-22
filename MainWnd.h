@@ -51,28 +51,6 @@ enum TimerEvent : UINT_PTR {
 };
 
 
-#ifdef WP_CONSOLE
-static HANDLE Console = nullptr;
-
-void NewLineToConsole();
-
-void ToConsole(const wchar_t* str);
-void ToConsole(const std::wstring& str);
-
-//Rick: Write formatted string to console (wrapper around std::format and WriteConsoleW)
-template <typename... Args >
-void ToConsole(const std::wstring_view formatStr, const Args&... args)
-{
-	const std::wstring strBuffer = std::vformat(formatStr, std::make_wformat_args(args...));
-
-	DWORD numCharsWritten = 0;
-	WriteConsoleW(Console, strBuffer.c_str(), static_cast<DWORD>(strBuffer.length()), &numCharsWritten, nullptr);
-
-	NewLineToConsole();
-}
-
-bool LoadConsole();
-#endif // WP_CONSOLE
 
 // Hook events
 static HWINEVENTHOOK LocationChangeHook;
@@ -95,36 +73,37 @@ public:
 
 // Attributes
 public:
-
+  //add const for C++11 compat
   // slowest allowed time between frames in ms
-  static constexpr int maxMoveDelay = 150;
+  static constexpr const int maxMoveDelay = 150;
 
   // max number of toons
-  static constexpr int maxToonCount = 50;
+  static constexpr const int maxToonCount = 50;
 	
   //Rick 2021: Registry entry strings
-  static constexpr wchar_t optionsRegStr[] = L"Options";
+  static constexpr const wchar_t optionsRegStr[] = L"Options";
 
-  static constexpr wchar_t penguinCountStr[] = L"PenguinCount";
-  static constexpr wchar_t moveDelayStr[] = L"MoveDelay";
-  static constexpr wchar_t splatDistanceStr[] = L"SplatDistance";  
-  static constexpr wchar_t santaPercentStr[] = L"SantaPercent";
-  static constexpr wchar_t blendLevelStr[] = L"BlendLevel";
-  static constexpr wchar_t largePenguinsEnabledStr[] = L"LargePenguinsEnabled";
-  static constexpr wchar_t soundEnabledStr[] = L"SoundEnabled";
+  static constexpr const wchar_t penguinCountStr[] = L"PenguinCount";
+  static constexpr const wchar_t moveDelayStr[] = L"MoveDelay";
+  static constexpr const wchar_t splatDistanceStr[] = L"SplatDistance";
+  static constexpr const wchar_t santaPercentStr[] = L"SantaPercent";
+  static constexpr const wchar_t blendLevelStr[] = L"BlendLevel";
+  static constexpr const wchar_t largePenguinsEnabledStr[] = L"LargePenguinsEnabled";
+  static constexpr const wchar_t soundEnabledStr[] = L"SoundEnabled";
 
   //Rick 2021: Default values for first run
-  static constexpr int defaultNumPenguins = maxToonCount;
-  static constexpr int defaultMoveDelay = maxMoveDelay / 2 ;
-  static constexpr int defaultSantaPercent = 0 ;
-  static constexpr unsigned char defaultBlendLevel = 255;
-  static constexpr bool defaultSoundEnabled = true;
+  static constexpr const int defaultNumPenguins = maxToonCount;
+  static constexpr const int defaultMoveDelay = maxMoveDelay / 2 ;
+  static constexpr const int defaultSantaPercent = 0 ;
+  static constexpr const unsigned char defaultBlendLevel = 255;
+  static constexpr const bool defaultSoundEnabled = true;
 
+  //remove inline keyword, doesnt work here
   // The region that covers all top level windows
-  inline static CRgn combinedWindowRegion;
+  static CRgn combinedWindowRegion;
 
   // Window rectangle for WinPenguins overlay (same as Desktop window rectangle)
-  inline static RECT winPenguinsWindowRect;
+  static RECT winPenguinsWindowRect;
 
 private:
 	int m_numpenguins;

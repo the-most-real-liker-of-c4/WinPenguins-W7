@@ -31,10 +31,9 @@
 #include <gdiplus.h>
 #pragma comment (lib, "Gdiplus.lib")
 
-#include <string_view>
 #include <vector>
 
-int GetEncoderClsid(const std::wstring_view format, CLSID* pClsid);
-void GetScreenshot(const CString & lpszFilename, const std::wstring_view format);
+int GetEncoderClsid(const std::wstring format, CLSID* pClsid);
+void GetScreenshot(const CString & lpszFilename, const std::wstring format);
 
 #endif

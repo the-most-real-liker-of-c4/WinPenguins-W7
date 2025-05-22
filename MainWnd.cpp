@@ -37,54 +37,8 @@
 #pragma comment (lib, "dwmapi.lib")
 
 
-#ifdef WP_CONSOLE
 
-void NewLineToConsole()
-{
-	const wchar_t newLine[] = L"\r\n";
-	const int newLineLen = lstrlenW(newLine);
-	DWORD numCharsWritten;
-	WriteConsoleW(Console, newLine, newLineLen, &numCharsWritten, nullptr);
-}
 
-//Rick: Write string to console (WriteConsoleW wrapper)
-void ToConsole(const wchar_t* str)
-{
-	DWORD numCharsWritten = 0;
-	const int strLen = lstrlenW(str);
-	WriteConsoleW(Console, str, strLen, &numCharsWritten, nullptr);
-	NewLineToConsole();
-}
-
-//Rick: Write string to console (WriteConsoleW wrapper)
-void ToConsole(const std::wstring& str)
-{
-	DWORD numCharsWritten = 0;
-	WriteConsoleW(Console, str.c_str(), static_cast<DWORD>(str.length()), &numCharsWritten, nullptr);
-	NewLineToConsole();
-}
-
-bool LoadConsole()
-{	
-	const BOOL ACRes = AllocConsole();
-	if (!ACRes) {
-		const std::wstring ACErrorStr = std::format(L"AllocConsole Error: {}", GetLastError());
-		MessageBoxW(nullptr, ACErrorStr.c_str(), L"Internal Error", MB_ICONERROR);
-		return false;
-	}
-
-	Console = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (Console == INVALID_HANDLE_VALUE) {
-		const std::wstring GetStdHandleErrorStr = std::format(L"GetStdHandle Error: {}", GetLastError());
-		MessageBoxW(nullptr, GetStdHandleErrorStr.c_str(), L"Internal Error", MB_ICONERROR);
-		return false;
-	}
-
-	ToConsole(L"WinPenguins Debug Console");
-
-	return true;
-}
-#endif // WP_CONSOLE
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -100,29 +54,7 @@ void CALLBACK HandleWindowEvents(HWINEVENTHOOK hook, DWORD event, HWND hwnd,
 		idChild == CHILDID_SELF)
 	{
 		windowChanged = true;
-
-#ifdef WP_CONSOLE
-		switch (event)
-		{
-		case EVENT_OBJECT_LOCATIONCHANGE:
-			ToConsole(L"EVENT_OBJECT_LOCATIONCHANGE: {}", static_cast<const void*>(hwnd));
-			break;
-		case EVENT_OBJECT_SHOW:
-			ToConsole(L"EVENT_OBJECT_SHOW: {}", static_cast<const void*>(hwnd));
-			break;
-		case EVENT_OBJECT_HIDE:
-			ToConsole(L"EVENT_OBJECT_HIDE: {}", static_cast<const void*>(hwnd));
-			break;
-		case EVENT_OBJECT_CLOAKED:
-			ToConsole(L"EVENT_OBJECT_CLOAKED: {}", static_cast<const void*>(hwnd));
-			break;
-		case EVENT_OBJECT_UNCLOAKED:
-			ToConsole(L"EVENT_OBJECT_UNCLOAKED: {}", static_cast<const void*>(hwnd));
-			break;
-		default:
-			break;
-		}
-#endif			
+		
 	}
 }
 
@@ -173,6 +105,7 @@ void ShutdownHooks()
 //Rick 2021: DPI scaling support for found windows
 UINT CMainWnd::getDPIScale(HWND hwnd)
 {
+	/* DPI_AWARENESS is not implemented here, so just assume the dpi is 96
 	// Determine the DPI to use, according to the DPI awareness mode
 	const DPI_AWARENESS dpiAwareness = GetAwarenessFromDpiAwarenessContext(GetThreadDpiAwarenessContext());
 	switch (dpiAwareness)
@@ -193,30 +126,29 @@ UINT CMainWnd::getDPIScale(HWND hwnd)
 	default:
 		break;
 	}
-
+	*/
 	return 96;
 }
 
 RECT CMainWnd::getWindowRectDWM(HWND hwnd)
 {
 	RECT WindowRect;
-	const HRESULT DWMGWA_Result = DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &WindowRect, sizeof(WindowRect));
-
-
+	 HRESULT DWMGWA_Result = DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &WindowRect, sizeof(WindowRect));
 	if (!(DWMGWA_Result == S_OK)) {
-		const std::wstring DWMGWAErrorStr = std::format(L"Error obtaining WindowRect: DwmGetWindowAttribute failed with error code: {:#010x}", DWMGWA_Result);
-#ifdef WP_CONSOLE		
-		ToConsole(DWMGWAErrorStr);
-#endif // WP_CONSOLE
-		MessageBoxW(DWMGWAErrorStr.c_str(), L"Internal Error", MB_ICONERROR);
+		//C++14 doesnt have std::format, use swprintf instead.
+		//allocate 85 chars, probably enough for the HRESULT
+		wchar_t* DWMGWAErrorStr = (wchar_t*)malloc(150* sizeof(wchar_t));
+		swprintf(DWMGWAErrorStr, 150, L"Error obtaining WindowRect: DwmGetWindowAttribute failed with Error Number: 0x%.8lX", DWMGWA_Result);
+		
+		MessageBoxW(DWMGWAErrorStr, L"Internal Error", MB_ICONERROR);
+		free(DWMGWAErrorStr);
 	}
-
 	//Rick 2021: Check for DPI scaling
-	const UINT DPI = getDPIScale(hwnd);
+	//const UINT DPI = getDPIScale(hwnd);
 
-	if (DPI == 96) // Rick 2021: 96 DPI is default scale factor of 100%, no adjustment needed
+	//if (DPI == 96) // Rick 2021: 96 DPI is default scale factor of 100%, no adjustment needed
 		return WindowRect;
-
+	/* The Purge continues, just return WindowRect because the DPI will always be 96
 	//Rick 2021: adjust window rect for DPI
 	const BOOL adjustRectForDPI_Res = AdjustWindowRectExForDpi(&WindowRect, 0, FALSE, 0, DPI);
 
@@ -229,6 +161,7 @@ RECT CMainWnd::getWindowRectDWM(HWND hwnd)
 	}
 
 	return WindowRect;
+	*/
 }
 
 BOOL CMainWnd::IsWindowCloaked(HWND hwnd)
@@ -302,9 +235,6 @@ void CMainWnd::FindVisibleWindows()
 		const bool GeForceOverlayFound = _wcsicmp(windowTitleBuf, NVIDIAGeForceOverlayTitle) == 0;
 
 		if (GeForceOverlayFound) {
-#ifdef WP_CONSOLE
-			ToConsole(L"NVIDIA GeForce Overlay found: (HWND: {})", static_cast<const void*>(currentWindow));
-#endif	// WP_CONSOLE
  			continue;
 		}
 	
@@ -314,11 +244,6 @@ void CMainWnd::FindVisibleWindows()
 
 		// Rick 2021: Check if hwnd is the taskbar (it does not have a window title)
 		const bool taskbarFound = _wcsicmp(classNameBuf, taskbarClassName) == 0;
-#ifdef WP_CONSOLE
-		if (taskbarFound) {
-			ToConsole(L"Taskbar found: (HWND: {})", static_cast<const void*>(currentWindow));
-		}
-#endif	// WP_CONSOLE	
 
 		const int winTextLength = ::GetWindowTextLength(currentWindow);
 
@@ -330,9 +255,6 @@ void CMainWnd::FindVisibleWindows()
 			continue;
 		}
 
-#ifdef WP_CONSOLE
-		ToConsole(L"Window found (HWND: {}| WindowTitle: {}| WindowClass: {})", static_cast<const void*>(currentWindow), windowTitleBuf, classNameBuf);
-#endif // WP_CONSOLE
 	
 		// Rick 2021: Get bounding rectangle of found window, taking into account DPI Scaling
 		// 
@@ -347,25 +269,24 @@ void CMainWnd::FindVisibleWindows()
 
 }
 
-
+//jank fix to a Linker error, since we got rid of inline in the definition of combinedWindowRegion & winPengiunsWindowRect
+RECT CMainWnd::winPenguinsWindowRect;
+CRgn CMainWnd::combinedWindowRegion;
 CMainWnd::CMainWnd()
 {
 
-#ifdef WP_CONSOLE
-	const bool loadCon = LoadConsole();
-	if (!loadCon) {
-		MessageBoxW(L"Error: Unable to load WinPenguins Console", L"Internal Error", MB_ICONERROR);
-	}
-#endif	
+
 	
     // Check if another instance of WinPenguins is already running
 	m_hInstanceMutex = ::CreateMutex(nullptr, FALSE, L"WinPenguinsInstanceMutex");
 	if (!m_hInstanceMutex) {
-		const std::wstring mutexStr = std::format(L"Unable to create WinPenguins Instance Mutex. CreateMutex error: {}", GetLastError());
-#ifdef WP_CONSOLE		
-		ToConsole(mutexStr);
-#endif WP_CONSOLE //WP_CONSOLE
-		MessageBox(mutexStr.c_str(), L"Internal Error", MB_ICONERROR);
+		// Again, use swprintf instead
+		wchar_t* mutexStr = (wchar_t*)malloc(80*sizeof(wchar_t));
+		swprintf(mutexStr, L"Unable to create WinPenguins Instance Mutex. CreateMutex error: %X", GetLastError());
+
+
+		MessageBox(mutexStr, L"Internal Error", MB_ICONERROR);
+		free(mutexStr);
 		ExitProcess(1);
 	}
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -386,9 +307,7 @@ CMainWnd::CMainWnd()
 	}
 	else {
 		const wchar_t desktopHWNDStr[] = L"GetDesktopWindow Error";
-#ifdef WP_CONSOLE
-		ToConsole(desktopHWNDStr);
-#endif WP_CONSOLE //WP_CONSOLE
+
 		MessageBoxW(desktopHWNDStr, L"Internal Error", MB_ICONERROR);
 		ExitProcess(1);		
 	}
@@ -416,9 +335,7 @@ CMainWnd::CMainWnd()
 
 	if (!createWindowResult) {
 		const wchar_t createWindowResultStr [] = L"CFrameWnd::Create Error: Unable to create WinPenguins overlay window";		
-#ifdef WP_CONSOLE		
-		ToConsole(createWindowResultStr);
-#endif //WP_CONSOLE
+
 		MessageBoxW(createWindowResultStr, L"Internal Error", MB_ICONERROR);
 		ExitProcess(1);
 	}
@@ -431,16 +348,21 @@ CMainWnd::CMainWnd()
 	
 	m_trayIcon = theApp.LoadIcon(IDR_ICON);
 	
+	// replace previous delclaration with the one from winPenguins 0.5 because the thing didn't compile
 	// Create the systray icon
-	NOTIFYICONDATA ni { .cbSize = sizeof(NOTIFYICONDATA), .hWnd = m_hWnd, .uID = 1, .uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP,
-		.uCallbackMessage = UWM_SYSTRAY, .hIcon = m_trayIcon, .szTip = L"WinPenguins" };
+	NOTIFYICONDATA ni;
 
+	ni.cbSize = sizeof(ni);
+	ni.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	ni.hWnd = m_hWnd;
+	ni.uID = 0;
+	ni.uCallbackMessage = UWM_SYSTRAY;
+	wcscpy(ni.szTip, L"WinPenguins");
+	ni.hIcon = theApp.LoadIcon(IDR_ICON);
 	BOOL sniResult = Shell_NotifyIcon(NIM_ADD, &ni);
 	if (!sniResult) {
 		const wchar_t sniErrorStr[] = L"Shell_NotifyIcon NIM_ADD Error";
-#ifdef WP_CONSOLE
-		ToConsole(sniErrorStr);
-#endif //WP_CONSOLE
+
 		MessageBoxW(sniErrorStr, L"Internal Error", MB_ICONERROR);
 	}
 
@@ -465,9 +387,7 @@ CMainWnd::~CMainWnd()
 	m_bgBitmap.DeleteObject();
 	m_activeBmp.DeleteObject();	
 
-#ifdef WP_CONSOLE
-	FreeConsole();
-#endif
+
 }
 
 BEGIN_MESSAGE_MAP(CMainWnd, CWnd)
@@ -1101,17 +1021,13 @@ void CMainWnd::OnTimer(UINT_PTR nIDEvent) //rick - updated so now compiles to x6
 				//change skateboarders direction with keyboard
 				//left
 				if (GetAsyncKeyState(VK_LEFT) || GetAsyncKeyState('A')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"LEFT or \"A\" key down");
-#endif						
+					
 					toon.m_directionIndex = TOON_LEFT;
 					toon.SetVelocity(-6, 0);
 				}
 				//right
 				if (GetAsyncKeyState(VK_RIGHT) || GetAsyncKeyState('D')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"RIGHT or \"D\" key down");
-#endif	
+
 					toon.m_directionIndex = TOON_RIGHT;
 					toon.SetVelocity(6, 0);
 				}
@@ -1156,17 +1072,13 @@ void CMainWnd::OnTimer(UINT_PTR nIDEvent) //rick - updated so now compiles to x6
 				//change skateboarders direction with keyboard
 				//left
 				if (GetAsyncKeyState(VK_LEFT) || GetAsyncKeyState('A')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"LEFT or \"A\" key down");
-#endif						
+				
 					toon.m_directionIndex = TOON_RIGHT;
 					toon.SetVelocity(-6, 0);
 				}
 				//right
 				if (GetAsyncKeyState(VK_RIGHT) || GetAsyncKeyState('D')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"RIGHT or \"D\" key down");
-#endif	
+
 					toon.m_directionIndex = TOON_LEFT;
 					toon.SetVelocity(6, 0);
 				}
@@ -1215,9 +1127,7 @@ void CMainWnd::OnTimer(UINT_PTR nIDEvent) //rick - updated so now compiles to x6
 				//Rick 2021: change skateboarder direction with keyboard
 				//down
 				if (GetAsyncKeyState(VK_DOWN) || GetAsyncKeyState('S')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"DOWN or \"S\" key down");
-#endif						
+			
 					//Rick 2021: Skateboard back down
 					toon.SetType(penguin_SKATEBOARDER_CLIMBER_DOWN, !toon.m_directionIndex);
 					toon.SetVelocity(0, -toon.m_v);//reverse direction
@@ -1255,9 +1165,7 @@ void CMainWnd::OnTimer(UINT_PTR nIDEvent) //rick - updated so now compiles to x6
 				//Rick 2021: change skateboarder direction with keyboard
 				//up
 				if (GetAsyncKeyState(VK_UP) || GetAsyncKeyState('W')) {
-#ifdef WP_CONSOLE
-					ToConsole(L"UP or \"W\" key down");
-#endif						
+				
 					//Rick 2021: Skateboard back down
 					toon.SetType(penguin_SKATEBOARDER_CLIMBER, !toon.m_directionIndex);
 					toon.SetVelocity(0, -toon.m_v);//reverse direction
@@ -1335,9 +1243,7 @@ void CMainWnd::OnTimer(UINT_PTR nIDEvent) //rick - updated so now compiles to x6
 	break;
 
 	default:
-#ifdef WP_CONSOLE
-		ToConsole(L"Unknown timer event: {}", nIDEvent);
-#endif
+
 		break;
 	}
 
@@ -1383,15 +1289,22 @@ void CMainWnd::OnScreenCapture()
 
 void CMainWnd::OnExit() 
 {
+	// use old implementation from winPenguins 0.5
 	// Remove the systray icon
-	NOTIFYICONDATA ni { .cbSize = sizeof(NOTIFYICONDATA), .hWnd = m_hWnd, .uID = 1 };
+	NOTIFYICONDATA ni;
+
+	ni.cbSize = sizeof(ni);
+	ni.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	ni.hWnd = m_hWnd;
+	ni.uID = 0;
+	ni.uCallbackMessage = UWM_SYSTRAY;
+	wcscpy(ni.szTip, L"WinPenguins");
+	ni.hIcon = theApp.LoadIcon(IDR_ICON);
 
 	BOOL sniResult = Shell_NotifyIcon(NIM_DELETE, &ni);
 	if (!sniResult) {
 		const wchar_t sniErrorStr[] = L"Shell_NotifyIcon NIM_DELETE Error";
-#ifdef WP_CONSOLE
-		ToConsole(sniErrorStr);
-#endif //WP_CONSOLE
+
 		MessageBoxW(sniErrorStr, L"Internal Error", MB_ICONERROR);
 	}
 

@@ -29,8 +29,8 @@
 #include "ScreenCapture.h"
 
 using namespace Gdiplus;
-
-int GetEncoderClsid(const std::wstring_view format, CLSID* pClsid)
+//remove wstring_view as it's a C++17 thing
+int GetEncoderClsid(const std::wstring format, CLSID* pClsid)
 {
     UINT  num = 0;          // number of image encoders
     UINT  size = 0;         // size of the image encoder array in bytes
@@ -38,8 +38,8 @@ int GetEncoderClsid(const std::wstring_view format, CLSID* pClsid)
     const Status GetImageEncodersSizeStatus = GetImageEncodersSize(&num, &size);
     if (GetImageEncodersSizeStatus != Status::Ok || size == 0)
         return -1;  // Failure
-
-    std::vector<std::byte> dataVec { size };
+	// swap std::byte with UINT
+    std::vector<UINT> dataVec { size };
 
     ImageCodecInfo* pImageCodecInfo = reinterpret_cast<ImageCodecInfo*>(dataVec.data());
 
@@ -59,7 +59,7 @@ int GetEncoderClsid(const std::wstring_view format, CLSID* pClsid)
     return -1;  // Failure
 }
 
-void GetScreenshot(const CString & lpszFilename, const std::wstring_view format)
+void GetScreenshot(const CString & lpszFilename, const std::wstring format)
 {
 	// Initialize GDI+.
     ULONG_PTR gdiplusToken;
