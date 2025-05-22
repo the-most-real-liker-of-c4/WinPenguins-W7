@@ -4,3 +4,4 @@ Things To Do
 	Deal with the Compliler warnings.
 	Memory Profiling.
 	Screenshot causes heap corruption due to overrun error? screenshot still works if you click ignore, but the program becomes unstable.
+	Use Windows 7 Style.
