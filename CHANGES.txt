@@ -1,3 +1,5 @@
+1.1-W7 (May 22, 2025) - A. L.
+  - Ported to visual studio 2015 & windows 7
 1.1 (February 16, 2022) - Riccardo Marcangelo
   - Fixed location of Explosion sprite when on edge of screen.
   - Improved error handling.
@@ -31,7 +33,7 @@
   - Fixed an issue with sound clipping when multiple sounds are played at once.
   - Instead of drawing on the desktop window, penguins are now drawn on a new transparent overlay window.
   - Migrated from ANSI to Unicode.
-  - Migrated to superior Pseudorandom Number Generator library.
+  - Migrated to superior Pseudorandom Number Generator library. (https://github.com/effolkronium/random)
   - Added new MSIX Windows app package installer.
   - Removed winmon.dll dependency.
   - Removed old unused code.
